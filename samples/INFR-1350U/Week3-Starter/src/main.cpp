@@ -64,7 +64,7 @@ bool initGLFW() {
 	}
 
 	//Create a new GLFW window
-	window = glfwCreateWindow(800, 800, "INFR1350U", nullptr, nullptr);
+	window = glfwCreateWindow(800, 800, "Jonathan Jay - 100743575", nullptr, nullptr);
 	glfwMakeContextCurrent(window);
 
 	// Set our window resized callback
@@ -146,6 +146,31 @@ int main() {
 		{ 1, 3, GL_FLOAT, false, 0, NULL }
 	});
 
+	static const float interleaved[] = {
+		// X	  Y		Z	  R		G	  B
+		  0.5f, -0.5f, 0.5f, 0.0f, 0.0f, 0.0f,
+		  0.5f,  0.5f, 0.5f, 0.3f, 0.2f, 0.5f,
+		 -0.5f,  0.5f, 0.5f, 1.0f, 1.0f, 0.0f,
+		  0.75f, 1.0f, 0.5f, 1.0f, 1.0f, 1.0f
+	};
+	VertexBuffer* interleaved_vbo = new VertexBuffer();
+	interleaved_vbo->LoadData(interleaved, 6 * 4);
+
+	static const uint16_t indices[] = {
+		0, 1, 2,
+		1, 3, 2
+	};
+	IndexBuffer* interleaved_ibo = new IndexBuffer();
+	interleaved_ibo->LoadData(indices, 3 * 2);
+
+	size_t stride = sizeof(float) * 6;
+	VertexArrayObject* vao2 = new VertexArrayObject();
+	vao2->AddVertexBuffer(interleaved_vbo, {
+		BufferAttribute(0, 3, GL_FLOAT, false, stride, 0),
+		BufferAttribute(1, 3, GL_FLOAT, false, stride, sizeof(float) * 3)
+	});
+	vao2->SetIndexBuffer(interleaved_ibo);
+
 	// Load our shaders
 
 	/*
@@ -156,6 +181,11 @@ int main() {
 	shader->LoadShaderPartFromFile("shaders/vertex_shader.glsl", GL_VERTEX_SHADER);
 	shader->LoadShaderPartFromFile("shaders/frag_shader.glsl", GL_FRAGMENT_SHADER);
 	shader->Link();
+
+	Shader* shader2 = new Shader();
+	shader2->LoadShaderPartFromFile("shaders/vertex_shader.glsl", GL_VERTEX_SHADER);
+	shader2->LoadShaderPartFromFile("shaders/frag_shader2.glsl", GL_FRAGMENT_SHADER);
+	shader2->Link();
 
 
 	// GL states
@@ -187,6 +217,11 @@ int main() {
 		vao->Bind();
 		glDrawArrays(GL_TRIANGLES, 0, 3);
 
+		shader2->Bind();
+
+		vao2->Bind();
+		glDrawElements(GL_TRIANGLES, interleaved_ibo->GetElementCount(), interleaved_ibo->GetElementType(), nullptr);
+		vao->UnBind();
 
 		glfwSwapBuffers(window);
 	}
@@ -195,6 +230,9 @@ int main() {
 	delete vao;
 	delete posVbo;
 	delete color_vbo;
+	delete vao2;
+	delete interleaved_ibo;
+	delete interleaved_vbo;
 
 	// Clean up the toolkit logger so we don't leak memory
 	Logger::Uninitialize();
