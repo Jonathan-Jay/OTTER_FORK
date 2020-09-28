@@ -23,7 +23,7 @@ int main() {
 		return 1;
 	}
 	// Create a new GLFW window
-	GLFWwindow* window = glfwCreateWindow(300, 300, "epilepsy warning", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(300, 300, "Jonathan Jay - 100743575", nullptr, nullptr);
 	// We want GL commands to be executed for our window, so we make our window's context the current one
 	glfwMakeContextCurrent(window);
 
