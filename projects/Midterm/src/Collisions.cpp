@@ -285,12 +285,13 @@ void Collisions::Update(entt::registry* reg, float deltaTime)
                 glm::vec3 diff = tempPos - pos2;
                 float dist = glm::length(diff);
                 float distance = coll.width + coll2.width;
-                if (dist < distance) {
+                if (dist < distance && dist != 0) {
                     glm::vec3 norm = glm::normalize(diff);
                     if (!coll2.isStatic) {      //in case i add pillars
                         glm::vec3 mid = pos2 + norm * dist / 2.f;
                         tempPos = mid + norm * coll.width;
                         pos2 = mid - norm * coll2.width;
+                        pos.y = 0.5f;
                         trans2.SetPosition(pos2);
                     }
                     else {
@@ -306,10 +307,11 @@ void Collisions::Update(entt::registry* reg, float deltaTime)
                 //bool hori = false, verti = false;
                 if (pos2.x - radw < tempPos.x && pos2.x + radw > pos.x &&
                     pos2.z - radh < pos.z && pos2.z + radh > pos.z) {
-                    glm::vec3 dist = tempPos - pos2;
+                    glm::vec3 diff = tempPos - pos2;
+                    float dist = glm::length(diff);
                     float sum = sqrtf(coll2.width * coll2.width + coll2.height * coll2.height) + coll.width;
-                    if (sum > glm::length(dist)) {
-                        if (fabsf(dist.x) > fabsf(dist.z))
+                    if (sum > dist && dist != 0) {
+                        if (fabsf(diff.x) > fabsf(diff.z))
                             tempPos.x = pos2.x + (tempPos.x > pos2.x ? radw : -radw);
                         else
                             tempPos.z = pos2.z + (tempPos.z > pos2.z ? radh : -radh);
@@ -317,6 +319,7 @@ void Collisions::Update(entt::registry* reg, float deltaTime)
                 }
             }
         }
+        tempPos.y = 0.5f;
         trans.SetPosition(tempPos);
     }
 }

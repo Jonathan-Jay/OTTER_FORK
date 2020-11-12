@@ -13,7 +13,7 @@ int main() {
 	srand(time(0));
 	Logger::Init(); // We'll borrow the logger from the toolkit, but we need to initialize it
 
-	std::cout << "\nBattle Tank  -  Jonathan Jay - 100743575\n"
+	std::cout << "\nBattle Tank\n"
 		"Controls are as follows:\n"
 		"\t\tP1 (RED):\t\tP2 (BLUE):\n"
 		"\t-Move:\tWASD\t\t\tIJKL\n"
@@ -57,7 +57,7 @@ int main() {
 	bool escPressed = false;
 	bool spacePressed = false;
 	bool tabPressed = false;
-	bool screenshake = false;
+	bool screenshake = true;
 	bool camOrtho = CAMERA_ORTHO;
 
 	while (!glfwWindowShouldClose(window)) {
@@ -93,47 +93,63 @@ int main() {
 		unsigned Map = ECS::CreateEntity();
 		ECS::AttachComponent<ObjLoader>(Map).LoadMesh("models/Map.obj", true);
 
-		if (randomMap) {
-			for (int i(0); i < 40; ++i)
+
+		if (glfwGetKey(window, GLFW_KEY_ENTER)) {
 			{
 				unsigned entity = ECS::CreateEntity();
-				if (rand() % 3) {
-					if (rand() % 5) {
-						ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Cube.obj", true);
-						ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, false);
-					}
-					else {
-						ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Pillar.obj", true);
-						ECS::AttachComponent<Collisions>(entity).Init(0.5f, false, false);
-					}
-				}
-				else {
+				ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Cube.obj", true);
+				ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, false);
+				ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(0, 0.5f, 0));
+			}
+			for (int i(0); i < 500; ++i) {
+				unsigned entity = ECS::CreateEntity();
+				ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/PillarB.obj", true);
+				ECS::AttachComponent<Collisions>(entity).Init(0.5f, true, true);
+				ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(0, 0.5f, 0));
+			}
+			std::cout << "\nSecret map found, Hope it doesn't lag your computer :)";
+		}
+		else if (randomMap) {
+				for (int i(0); i < 40; ++i)
+				{
+					unsigned entity = ECS::CreateEntity();
 					if (rand() % 3) {
-						ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/CubeB.obj", true);
-						ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, true);
+						if (rand() % 5) {
+							ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Cube.obj", true);
+							ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, false);
+						}
+						else {
+							ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Pillar.obj", true);
+							ECS::AttachComponent<Collisions>(entity).Init(0.5f, false, false);
+						}
 					}
 					else {
-						ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/PillarB.obj", true);
-						ECS::AttachComponent<Collisions>(entity).Init(0.5f, true, true);
+						if (rand() % 3) {
+							ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/CubeB.obj", true);
+							ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, true);
+						}
+						else {
+							ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/PillarB.obj", true);
+							ECS::AttachComponent<Collisions>(entity).Init(0.5f, true, true);
+						}
 					}
+					//ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(0, 0.5f, 9.5f - i * 2.1f));
+					ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(rand() % 21 - 10, 0.5f, rand() % 18 - 8.5f));
 				}
-				//ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(0, 0.5f, 9.5f - i * 2.1f));
-				ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(rand() % 21 - 10, 0.5f, rand() % 18 - 8.5f));
-			}
-			for (int i(0); i < 7; ++i)
-			{
-				unsigned entity = ECS::CreateEntity();
-				ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Cube.obj", true);
-				ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, false);
-				ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(15, 0.5f, 3.f - i));
-			}
-			for (int i(0); i < 7; ++i)
-			{
-				unsigned entity = ECS::CreateEntity();
-				ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Cube.obj", true);
-				ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, false);
-				ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(-15, 0.5f, 3.f - i));
-			}
+				for (int i(0); i < 7; ++i)
+				{
+					unsigned entity = ECS::CreateEntity();
+					ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Cube.obj", true);
+					ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, false);
+					ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(15, 0.5f, 3.f - i));
+				}
+				for (int i(0); i < 7; ++i)
+				{
+					unsigned entity = ECS::CreateEntity();
+					ECS::AttachComponent<ObjLoader>(entity).LoadMesh("models/Cube.obj", true);
+					ECS::AttachComponent<Collisions>(entity).Init(1, 1, false, false);
+					ECS::GetComponent<Transform>(entity).SetPosition(glm::vec3(-15, 0.5f, 3.f - i));
+				}
 		}
 		else {
 			glm::vec3 multiplier = glm::vec3(1.f);
