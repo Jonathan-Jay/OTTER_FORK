@@ -12,7 +12,11 @@
 
 GLFWwindow* window;
 
-float t = 0.f, widtht = 0.5f, tiling = 10;
+float spread = 0.75f, waterHeight = 2.f, tiling = 10;
+
+//INPUT handling
+float rx = 0.0f, ry = 0.0f,
+tz = 0.0f, ty = 0.0f, tx = 0.0f;
 
 unsigned char* loadImage(std::string filename, int &width, int &height) {
 	int channels;
@@ -23,7 +27,7 @@ unsigned char* loadImage(std::string filename, int &width, int &height) {
 		&channels,
 		0);
 	if (image) {
-		std::cout << "Image LOADED" << width << " " << height << std::endl;
+		std::cout << "Image LOADED " << width << " " << height << " " << channels << std::endl;
 	}
 	else {
 		std::cout << "Failed to load image!" << std::endl;
@@ -54,12 +58,10 @@ bool initGLAD() {
 	return true;
 }
 
-GLuint shader_program;
-
-bool loadShaders() {
+GLuint loadShaders(std::string vert, std::string frag) {
 	// Read Shaders from file
 	std::string vert_shader_str;
-	std::ifstream vs_stream("vertex_shader.glsl", std::ios::in);
+	std::ifstream vs_stream(vert, std::ios::in);
 	if (vs_stream.is_open()) {
 		std::string Line = "";
 		while (getline(vs_stream, Line))
@@ -68,12 +70,12 @@ bool loadShaders() {
 	}
 	else {
 		printf("Could not open vertex shader!!\n");
-		return false;
+		return -1;
 	}
 	const char* vs_str = vert_shader_str.c_str();
 
 	std::string frag_shader_str;
-	std::ifstream fs_stream("frag_shader.glsl", std::ios::in);
+	std::ifstream fs_stream(frag, std::ios::in);
 	if (fs_stream.is_open()) {
 		std::string Line = "";
 		while (getline(fs_stream, Line))
@@ -82,7 +84,7 @@ bool loadShaders() {
 	}
 	else {
 		printf("Could not open fragment shader!!\n");
-		return false;
+		return -1;
 	}
 	const char* fs_str = frag_shader_str.c_str();
 	
@@ -93,42 +95,34 @@ bool loadShaders() {
 	glShaderSource(fs, 1, &fs_str, NULL);
 	glCompileShader(fs);
 
-	shader_program = glCreateProgram();
+	GLuint shader_program = glCreateProgram();
 	glAttachShader(shader_program, fs);
 	glAttachShader(shader_program, vs);
 	glLinkProgram(shader_program);
 
-	return true;
+	return shader_program;
 }
-
-//INPUT handling
-float rx = 0.0f;
-float ry = 0.0f;
-float tz = 0.0f;
-float ty = 0.0f;
-float tx = 0.0f;
-GLuint filter_mode = GL_NEAREST;
 
 void keyboard() {
 	if (glfwGetKey(window, GLFW_KEY_I) == GLFW_PRESS) {
-		widtht += 0.001f;
-		if (widtht >= 1)
-			widtht = 1;
+		waterHeight += 0.001f;
+		if (waterHeight >= 3.5f)
+			waterHeight = 3.5f;
 	}
 	if (glfwGetKey(window, GLFW_KEY_K) == GLFW_PRESS) {
-		widtht -= 0.001f;
-		if (widtht <= 0)
-			widtht = 0;
+		waterHeight -= 0.001f;
+		if (waterHeight <= 0.5f)
+			waterHeight = 0.5f;
 	}
 	if (glfwGetKey(window, GLFW_KEY_L) == GLFW_PRESS) {
-		t += 0.001f;
-		if (t >= 0.5f)
-			t = 0.5f;
+		spread += 0.001f;
+		if (spread >= 1.f)
+			spread = 1.f;
 	}
 	if (glfwGetKey(window, GLFW_KEY_J) == GLFW_PRESS) {
-		t -= 0.001f;
-		if (t <= 0)
-			t = 0;
+		spread -= 0.001f;
+		if (spread <= 0)
+			spread = 0;
 	}
 	if (glfwGetKey(window, GLFW_KEY_O) == GLFW_PRESS) {
 		tiling += 0.01f;
@@ -172,36 +166,16 @@ void keyboard() {
 	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
 		ty -= 0.001f;
 	}
-
-	if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS) {
-		if (filter_mode == GL_LINEAR) {
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-			filter_mode = GL_NEAREST;
-		}
-		else {
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-			glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-			filter_mode = GL_LINEAR;
-		}
-	}
-
-
-
 }
 
-GLfloat* points2;
-GLfloat* uvs2;
-size_t numVertices;
-
-void genPlane(int d) {
-	numVertices = size_t(6 * (d * d));
+size_t genPlane(int d, GLfloat* points2, GLfloat* uvs2) {
+	size_t numVertices = size_t(6 * (d * d));
 	points2 = new GLfloat[3*numVertices];
 	uvs2 = new GLfloat[2*numVertices];
 	GLfloat x, y, z;
 	int i = 0;
 	x = -1.0;
-	y = -0.5;
+	y = 0;
 	z = 1.0;
 
 	int uvcounter = 0;
@@ -294,6 +268,8 @@ void genPlane(int d) {
 
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 0, NULL);
+
+	return numVertices;
 }
 
 int main() {
@@ -306,13 +282,26 @@ int main() {
 	if (!initGLAD())
 		return 2;
 
-	// Mesh data
-	genPlane(250);
+	//Mesh data
+	GLfloat* points2 = nullptr;
+	GLfloat* uvs2 = nullptr;
+	size_t numVertices = genPlane(250, points2, uvs2);
+
+	GLuint terrainShader;
+	GLuint waterShader;
+	// Load the shaders
+	if ((terrainShader = loadShaders("terrain.vert", "terrain.frag")) > -1)
+		return 3;
+	if ((waterShader = loadShaders("water.vert", "water.frag")) > -1)
+		return 3;
+	
+	std::cout << "\nControls:\nWASD LShift Space to move the terain\nArrow keys to rotate\n"
+		"IK to raise or lower water level\nJL to adjust smoothness\nUO to adjust tiling amount\n";
 
 	//loading textures
-	GLuint textureHandle[3];
-	glGenTextures(3, textureHandle);
-	for (int i(0); i < 3; ++i) {
+	GLuint textureHandle[5];
+	glGenTextures(5, textureHandle);
+	for (int i(0); i < 5; ++i) {
 
 		glActiveTexture(GL_TEXTURE0 + i);
 		glBindTexture(GL_TEXTURE_2D, textureHandle[i]);
@@ -321,11 +310,16 @@ int main() {
 		std::string filename = "";
 		switch (i) {
 		case 0:	filename = "heightmap.bmp";	break;
-		case 1:	filename = "checker.jpg";	break;
-		case 2:	filename = "box.jpg";		break;
+		case 1:	filename = "sand.png";		break;
+		case 2:	filename = "grass.png";		break;
+		case 3:	filename = "rock.png";		break;
+		case 4:	filename = "water.png";		break;
 		}
 		unsigned char* image = loadImage(filename, width, height);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+		if (i == 0)
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, image);
+		else
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image);
 		stbi_image_free(image);
 
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
@@ -334,37 +328,41 @@ int main() {
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_LINEAR);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_LINEAR);
 	}
-	
 
-	// Load your shaders
-	if (!loadShaders())
-		return 3;
+	///terrain uniforms		(TU stands for terrain uniform)
+		glUseProgram(terrainShader);
 
-	glUseProgram(shader_program);
+		GLuint MatrixTU =		glGetUniformLocation(terrainShader, "MVP");
+		GLuint spreadTU =		glGetUniformLocation(terrainShader, "spread");
+		GLuint tilingTU =		glGetUniformLocation(terrainShader, "tiling");
+		GLuint heightTU =		glGetUniformLocation(terrainShader, "waterHeight");
 
-	GLuint MatrixID = 
-		glGetUniformLocation(shader_program, "MVP");
-	GLuint TimeID = 
-		glGetUniformLocation(shader_program, "time");
-	GLuint tilingID = 
-		glGetUniformLocation(shader_program, "tiling");
-	GLuint tID = 
-		glGetUniformLocation(shader_program, "t");
-	GLuint widthtID = 
-		glGetUniformLocation(shader_program, "widtht");
+		/////// TEXTURE
+		glUniform1i(glGetUniformLocation(terrainShader, "heightmap"), 0);
+		glUniform1i(glGetUniformLocation(terrainShader, "sand"), 1);
+		glUniform1i(glGetUniformLocation(terrainShader, "grass"), 2);
+		glUniform1i(glGetUniformLocation(terrainShader, "rock"), 3);
+	///End of terrain uniforms
 
 
-	/////// TEXTURE
-	glUniform1i(glGetUniformLocation(shader_program, "myTextureSampler"), 0);
-	glUniform1i(glGetUniformLocation(shader_program, "checker"), 1);
-	glUniform1i(glGetUniformLocation(shader_program, "box"), 2);
+	///Water uniforms		(WU stands for water uniform)
+		glUseProgram(waterShader);
+
+		GLuint MatrixWU =		glGetUniformLocation(waterShader, "MVP");
+		GLuint TimeWU =			glGetUniformLocation(waterShader, "time");
+		GLuint tilingWU =		glGetUniformLocation(waterShader, "tiling");
+		GLuint heightWU =		glGetUniformLocation(waterShader, "waterHeight");
+
+		/////// TEXTURE
+		glUniform1i(glGetUniformLocation(waterShader, "water"), 4);
+	///End of water uniforms
 
 
 	// Projection matrix : 45° Field of View, 4:3 ratio, display range : 0.1 unit <-> 100 units
 	int width, height;
 	glfwGetWindowSize(window, &width, &height);
 
-	glm::mat4 VP;
+	glm::mat4 VP;	//VP calculations done once
 	{
 		glm::mat4 Projection =
 			glm::perspective(glm::radians(45.0f),
@@ -372,9 +370,9 @@ int main() {
 
 		// Camera matrix
 		glm::mat4 View = glm::lookAt(
-			glm::vec3(0, 2, 4),
-			glm::vec3(0, 0, 0),
-			glm::vec3(0, 1, 0)
+			glm::vec3(0, 2, 4),		//position
+			glm::vec3(0, 0, 0),		//looking at
+			glm::vec3(0, 1, 0)		//up
 		);
 
 		VP = Projection * View;
@@ -384,7 +382,10 @@ int main() {
 	
 	// Enable depth buffer
 	glEnable(GL_DEPTH_TEST);
-	
+	//let there be transparency
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	///// Game loop /////
 	while (!glfwWindowShouldClose(window)) {
 		glfwPollEvents();
@@ -399,15 +400,28 @@ int main() {
 		Model = glm::rotate(Model, glm::radians(rx), glm::vec3(1.0f, 0.0f, 0.0f));
 		mvp = VP * Model;
 		
-		glUniformMatrix4fv(MatrixID, 1, 
-			GL_FALSE, &mvp[0][0]);
+		//draw terrain
+			glUseProgram(terrainShader);
 
-		glUniform1f(TimeID, time);
-		glUniform1f(tID, t);
-		glUniform1f(tilingID, tiling);
-		glUniform1f(widthtID, widtht);
+			glUniformMatrix4fv(MatrixTU, 1, GL_FALSE, &mvp[0][0]);
+			glUniform1f(spreadTU, spread);
+			glUniform1f(tilingTU, tiling);
+			glUniform1f(heightTU, waterHeight);
 		
-		glDrawArrays(GL_TRIANGLES, 0, numVertices);
+			glDrawArrays(GL_TRIANGLES, 0, numVertices);
+		//end draw terrain
+
+
+		//draw water
+			glUseProgram(waterShader);
+
+			glUniformMatrix4fv(MatrixWU, 1, GL_FALSE, &mvp[0][0]);
+			glUniform1f(TimeWU, time);
+			glUniform1f(tilingWU, tiling);
+			glUniform1f(heightWU, waterHeight);
+
+			glDrawArrays(GL_TRIANGLES, 0, numVertices);
+		//end draw water
 
 		glfwSwapBuffers(window);
 	}

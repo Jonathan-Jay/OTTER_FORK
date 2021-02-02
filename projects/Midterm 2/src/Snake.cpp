@@ -102,9 +102,9 @@ void Snake::Update()
 	if (updateScore) {
 		if (score > 999) score = 999;
 
-		int digit1 = score / 100;
-		int digit2 = score / 10 - digit1 * 10;
-		int digit3 = score - digit2 * 10;
+		int digit1 = (score - counter) / 100;
+		int digit2 = (score - counter) / 10 - digit1 * 10;
+		int digit3 = (score - counter) - digit2 * 10 - digit1 * 100;
 		if (paused && !dead)	digit1 = digit2 = digit3 = 9;
 		ECS::GetComponent<ObjLoader>(scoreEnt1).LoadMesh("models/num/" + std::to_string(digit1) + ".obj");
 		ECS::GetComponent<ObjLoader>(scoreEnt2).LoadMesh("models/num/" + std::to_string(digit2) + ".obj");
@@ -164,6 +164,7 @@ void Snake::Update()
 					targetTPos = lastTPos + check;
 				}
 				std::cout << "Snake - Score: " << ++counter << "\r";
+				updateScore = true;
 			}
 		}
 		if (hasTail) {
