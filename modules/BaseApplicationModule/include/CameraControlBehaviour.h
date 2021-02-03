@@ -9,8 +9,8 @@ public:
 	void OnLoad(entt::handle entity) override;
 	void Update(entt::handle entity) override;
 
-protected:
 	float _moveSpeed = 1.5f;
+protected:
 	double _prevMouseX, _prevMouseY;
 	float _rotationX, _rotationY;
 	bool _isPressed;

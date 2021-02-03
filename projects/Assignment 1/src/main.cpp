@@ -167,8 +167,8 @@ int main() {
 
 			auto name = controllables[selectedVao].get<GameObjectTag>().Name;
 			ImGui::Text(name.c_str());
-			auto behaviour = BehaviourBinding::Get<SimpleMoveBehaviour>(controllables[selectedVao]);
-			ImGui::Checkbox("Relative Rotation", &behaviour->Relative);
+			//auto behaviour = BehaviourBinding::Get<SimpleMoveBehaviour>(controllables[selectedVao]);
+			//ImGui::Checkbox("Relative Rotation", &behaviour->Relative);
 
 			ImGui::Text("Q/E -> Yaw\nLeft/Right -> Roll\nUp/Down -> Pitch\nY -> Toggle Mode");
 		
@@ -368,7 +368,7 @@ int main() {
 			camera.LookAt(glm::vec3(0));
 			camera.SetFovDegrees(90.0f); // Set an initial FOV
 			camera.SetOrthoHeight(3.0f);
-			BehaviourBinding::Bind<CameraControlBehaviour>(cameraObject);
+			BehaviourBinding::Bind<CameraControlBehaviour>(cameraObject)->_moveSpeed = 3.f;
 		}
 
 		Framebuffer* testBuffer;
