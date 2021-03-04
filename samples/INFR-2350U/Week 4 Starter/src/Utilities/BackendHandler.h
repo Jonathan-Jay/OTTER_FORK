@@ -2,8 +2,9 @@
 
 #include "Utilities/Util.h"
 #include "Utilities/EnvironmentGenerator.h"
-#include "Graphics/Framebuffer.h"
-#include "Graphics/LUT.h"
+#include "Graphics/Post/GreyscaleEffect.h"
+#include "Graphics/Post/SepiaEffect.h"
+#include "Graphics/Post/ColorCorrectEffect.h"
 
 #include <iostream>
 #include <Logging.h>
