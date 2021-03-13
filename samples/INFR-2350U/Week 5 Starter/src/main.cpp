@@ -56,6 +56,11 @@ int main() {
 		passthroughShader->LoadShaderPartFromFile("shaders/passthrough_frag.glsl", GL_FRAGMENT_SHADER);
 		passthroughShader->Link();
 
+		Shader::sptr simpleDepthShader = Shader::Create();
+		simpleDepthShader->LoadShaderPartFromFile("shaders/simple_depth_vert.glsl", GL_VERTEX_SHADER);
+		simpleDepthShader->LoadShaderPartFromFile("shaders/simple_depth_frag.glsl", GL_FRAGMENT_SHADER);
+		simpleDepthShader->Link();
+
 		// Load our shaders
 		Shader::sptr shader = Shader::Create();
 		shader->LoadShaderPartFromFile("shaders/vertex_shader.glsl", GL_VERTEX_SHADER);
@@ -76,6 +81,7 @@ int main() {
 
 		//Basic effect for drawing to
 		PostEffect* basicEffect;
+		Framebuffer* shadowBuffer;
 
 		//Post Processing Effects
 		int activeEffect = 0;
@@ -298,6 +304,17 @@ int main() {
 		int width, height;
 		glfwGetWindowSize(BackendHandler::window, &width, &height);
 
+		int shadowWidth = 4096;
+		int shadowHeight = 4096;
+
+		GameObject shadowBufferObject = scene->CreateEntity("Shadow Buffer");
+		{
+			shadowBuffer = &shadowBufferObject.emplace<Framebuffer>();
+			shadowBuffer->AddDepthTarget();
+			shadowBuffer->Init(shadowWidth, shadowHeight);
+		}
+
+
 		GameObject framebufferObject = scene->CreateEntity("Basic Effect");
 		{
 			basicEffect = &framebufferObject.emplace<PostEffect>();
@@ -350,7 +367,7 @@ int main() {
 			
 			GameObject skyboxObj = scene->CreateEntity("skybox");  
 			skyboxObj.get<Transform>().SetLocalPosition(0.0f, 0.0f, 0.0f);
-			skyboxObj.get_or_emplace<RendererComponent>().SetMesh(meshVao).SetMaterial(skyboxMat);
+			skyboxObj.get_or_emplace<RendererComponent>().SetMesh(meshVao).SetMaterial(skyboxMat).SetCastShadow(false);
 		}
 		////////////////////////////////////////////////////////////////////////////////////////
 
@@ -435,6 +452,7 @@ int main() {
 			{
 				effects[i]->Clear();
 			}
+			shadowBuffer->Clear();
 
 
 			glClearColor(0.08f, 0.17f, 0.31f, 1.0f);
@@ -452,6 +470,11 @@ int main() {
 			glm::mat4 view = glm::inverse(camTransform.LocalTransform());
 			glm::mat4 projection = cameraObject.get<Camera>().GetProjection();
 			glm::mat4 viewProjection = projection * view;
+
+			//Set up light space matrix
+			glm::mat4 lightProjectionMatrix = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, -30.0f, 30.0f);
+			glm::mat4 lightViewMatrix = glm::lookAt(glm::vec3(-theSun._lightDirection), glm::vec3(), glm::vec3(0.0f, 0.0f, 1.0f));
+			glm::mat4 lightSpaceViewProj = lightProjectionMatrix * lightViewMatrix;
 						
 			// Sort the renderers by shader and material, we will go for a minimizing context switches approach here,
 			// but you could for instance sort front to back to optimize for fill rate if you have intensive fragment shaders
@@ -475,7 +498,25 @@ int main() {
 			Shader::sptr current = nullptr;
 			ShaderMaterial::sptr currentMat = nullptr;
 
+			glViewport(0, 0, shadowWidth, shadowHeight);
+			shadowBuffer->Bind();
+
+			renderGroup.each([&](entt::entity e, RendererComponent& renderer, Transform& transform) {
+				// Render the mesh
+				if (renderer.CastShadows)
+				{
+					BackendHandler::RenderVAO(simpleDepthShader, renderer.Mesh, viewProjection, transform, lightSpaceViewProj);
+				}
+			});
+
+			shadowBuffer->Unbind();
+
+
+			glfwGetWindowSize(BackendHandler::window, &width, &height);
+
+			glViewport(0, 0, width, height);
 			basicEffect->BindBuffer(0);
+
 
 			// Iterate over the render group components and draw them
 			renderGroup.each( [&](entt::entity e, RendererComponent& renderer, Transform& transform) {
@@ -490,10 +531,13 @@ int main() {
 					currentMat = renderer.Material;
 					currentMat->Apply();
 				}
+
+				shadowBuffer->BindDepthAsTexture(30);
 				// Render the mesh
-				BackendHandler::RenderVAO(renderer.Material->Shader, renderer.Mesh, viewProjection, transform);
+				BackendHandler::RenderVAO(renderer.Material->Shader, renderer.Mesh, viewProjection, transform, lightSpaceViewProj);
 			});
 
+			shadowBuffer->UnbindTexture(30);
 			basicEffect->UnbindBuffer();
 
 			effects[activeEffect]->ApplyEffect(basicEffect);

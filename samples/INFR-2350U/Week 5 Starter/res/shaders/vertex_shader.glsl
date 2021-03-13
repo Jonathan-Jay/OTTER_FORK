@@ -9,13 +9,14 @@ layout(location = 0) out vec3 outPos;
 layout(location = 1) out vec3 outColor;
 layout(location = 2) out vec3 outNormal;
 layout(location = 3) out vec2 outUV;
+layout(location = 4) out vec4 outFragPosLightSpace;
 
 uniform mat4 u_ModelViewProjection;
 uniform mat4 u_View;
 uniform mat4 u_Model;
 uniform mat3 u_NormalMatrix;
 uniform vec3 u_LightPos;
-
+uniform mat4 u_LightSpaceMatrix;
 
 void main() {
 
@@ -30,6 +31,9 @@ void main() {
 
 	// Pass our UV coords to the fragment shader
 	outUV = inUV;
+
+	//Pass out the light space fragment pos
+	outFragPosLightSpace = u_LightSpaceMatrix * vec4(outPos, 1.0);
 
 	///////////
 	outColor = inColor;

@@ -154,8 +154,9 @@ void BackendHandler::RenderImGui()
 		for (auto& func : imGuiCallbacks) {
 			func();
 		}
-		ImGui::End();
 	}
+
+	ImGui::End();
 
 	// Make sure ImGui knows how big our window is
 	ImGuiIO& io = ImGui::GetIO();

@@ -4,6 +4,7 @@ layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inColor;
 layout(location = 2) in vec3 inNormal;
 layout(location = 3) in vec2 inUV;
+layout(location = 4) in vec4 inFragPosLightSpace;
 
 struct DirectionalLight
 {
@@ -29,6 +30,7 @@ layout (std140, binding = 0) uniform u_Lights
 	DirectionalLight sun;
 };
 
+layout (binding = 30) uniform sampler2D s_ShadowMap;
 uniform sampler2D s_Diffuse;
 uniform sampler2D s_Diffuse2;
 uniform sampler2D s_Specular;
@@ -37,6 +39,26 @@ uniform float u_TextureMix;
 uniform vec3  u_CamPos;
 
 out vec4 frag_color;
+
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+	//Perspective division
+	vec3 projectionCoordinates = fragPosLightSpace.xyz / fragPosLightSpace.w;
+
+	//Transform into a [0,1] range
+	projectionCoordinates = projectionCoordinates * 0.5 + 0.5;
+
+	//Get the closest depth value
+	float closestDepth = texture(s_ShadowMap, projectionCoordinates.xy).r;
+
+	//Get the current depth according to our camera
+	float currentDepth = projectionCoordinates.z;
+
+	//Check whether there's a shadow
+	float shadow = currentDepth - sun._shadowBias > closestDepth ? 1.0 : 0.0;
+
+	return shadow; 
+}
 
 // https://learnopengl.com/Advanced-Lighting/Advanced-Lighting
 void main() {
@@ -60,9 +82,11 @@ void main() {
 	vec4 textureColor2 = texture(s_Diffuse2, inUV);
 	vec4 textureColor = mix(textureColor1, textureColor2, u_TextureMix);
 
+	float shadow = ShadowCalculation(inFragPosLightSpace);
+
 	vec3 result = (
 		(sun._ambientPow * sun._ambientCol.xyz) + // global ambient light
-		(diffuse + specular) // light factors from our single light
+		(1.0 - shadow) * (diffuse + specular) // light factors from our single light
 		) * inColor * textureColor.rgb; // Object color
 
 	frag_color = vec4(result, textureColor.a);
